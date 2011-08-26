@@ -1,112 +1,124 @@
+"""
+Models for an atlas application.
+
+"""
+
+import datetime
+
+from django.conf import settings
 from django.db import models
-from django.utils.translation import ugettext_lazy as _
+from template_utils.markup import formatter
 
 
-class AtlasUniqueBase(models.Model):
+class Country(models.Model):
     """
-    Base class for atlas models whose name & slug fields are unique throughout
-    the table.
+    A country on planet earth, plain and simple.
 
     """
 
-    name = models.CharField(_(u'name'), max_length=255, unique=True)
-    slug = models.SlugField(_(u'slug'), unique=True)
+    name = models.CharField(max_length=250, unique=True)
+    slug = models.SlugField(unique=True, help_text=u'Used in the URL for the \
+        country. Must be unique.')
 
     class Meta:
-        abstract = True
-        ordering = ('name', )
+        verbose_name_plural = u'countries'
+        ordering = ['name']
 
     def __unicode__(self):
         return self.name
 
 
-class AtlasBase(models.Model):
+class State(models.Model):
     """
-    Base class for atlas models whose name & slug fields are not unique
-    throughout the table.
+    A state, province, etc. in a country.
 
     """
 
-    name = models.CharField(_(u'name'), max_length=255)
-    slug = models.SlugField(_(u'slug'))
+    name = models.CharField(max_length=250)
+    slug = models.SlugField(help_text=u'Used in the URL for the state. Must \
+        be unique within its country.')
+    country = models.ForeignKey(Country, related_name='states')
 
     class Meta:
-        abstract = True
-        ordering = ('name', )
+        ordering = ['country', 'name']
 
     def __unicode__(self):
         return self.name
 
 
-class Country(AtlasUniqueBase):
-    """A country on planet earth, plain and simple."""
-
-    class Meta(AtlasUniqueBase.Meta):
-        verbose_name = _(u'country')
-        verbose_name_plural = _(u'countries')
-
-
-class State(AtlasBase):
-    """A state, province, etc. in a country."""
-
-    country = models.ForeignKey(Country, verbose_name=_(u'country'),
-        related_name='states')
-
-    class Meta(AtlasBase.Meta):
-        ordering = ('country', 'name')
-        unique_together = (('name', 'country'), ('slug', 'country'))
-        verbose_name = _(u'state')
-        verbose_name_plural = _(u'states')
-
-
-class City(AtlasBase):
+class City(models.Model):
     """
     A city, town, hamlet etc. in a state, or province, etc. and county,
     borough, etc.
 
     """
 
-    state = models.ForeignKey(State, related_name='cities',
-        help_text=_(u'Or province, etc.'))
-    county = models.CharField(max_length=255, blank=True,
-        help_text=_(u'Or burough, or whatever.'))
+    name = models.CharField(max_length=250)
+    slug = models.SlugField(unique=True, help_text=u'Used in the URL for the \
+        city. Must be unique within its state.')
+    state = models.ForeignKey(State, related_name='cities')
+    county = models.CharField(max_length=250, blank=True)
 
-    class Meta(AtlasBase.Meta):
-        ordering = ('state', 'name')
-        unique_together = (('name', 'state'), ('slug', 'state'))
-        verbose_name = _(u'city')
-        verbose_name_plural = _(u'cities')
+    class Meta:
+        verbose_name_plural = u'cities'
+        ordering = ['state', 'county', 'name']
 
-
-class LocationType(AtlasUniqueBase):
-    """A type of location, e.g. home, hotel, restaurant, etc."""
-
-    class Meta(AtlasUniqueBase.Meta):
-        verbose_name = _(u'location type')
-        verbose_name_plural = _(u'location types')
+    def __unicode__(self):
+        return self.name
 
 
-class Location(AtlasBase):
-    """A specific location within a city, town, hamlet etc."""
+class LocationType(models.Model):
+    """
+    A type of location, i.e. home, hotel, restaurant, etc.
 
-    address_1 = models.CharField(_(u'adreess1'), max_length=255, blank=True)
-    address_2 = models.CharField(_(u'address 2'), max_length=255, blank=True)
-    city = models.ForeignKey(City, verbose_name=_(u'city'),
-        related_name='locations')
-    zip = models.CharField(_(u'ZIP code'), max_length=36, blank=True,
-        help_text=_(u'Or postal code; whatever you got.'))
+    """
 
-    neighborhood = models.CharField(_(u'neighborhood'), max_length=255,
-        blank=True)
-    location_type = models.ForeignKey(LocationType,
-        verbose_name=_(u'location type'), related_name='locations')
-    description = models.TextField(_(u'description'), blank=True)
+    kind = models.CharField(max_length=250, unique=True)
+    slug = models.SlugField(unique=True, help_text=u'Used in the URL for the \
+        location type. Must be unique.')
 
-    latitude = models.FloatField(_('latitude'), blank=True, null=True)
-    longitude = models.FloatField(_('longitude'), blank=True, null=True)
+    class Meta:
+        ordering = ['kind']
 
-    class Meta(AtlasBase.Meta):
-        ordering = ('city__state__country', 'city__state', 'city', 'name')
-        unique_together = (('slug', 'city'), )
-        verbose_name = _(u'location')
-        verbose_name_plural = _(u'locations')
+    def __unicode__(self):
+        return self.kind
+
+
+class Location(models.Model):
+    """
+    A specific location within a city, town, hamlet etc.
+
+    """
+
+    name = models.CharField(max_length=250)
+    address_1 = models.CharField(max_length=250, blank=True)
+    address_2 = models.CharField(max_length=250, blank=True)
+    city = models.ForeignKey(City, related_name='locations')
+    state = models.ForeignKey(State, related_name='locations')
+    country = models.ForeignKey(Country, related_name='locations')
+    zip = models.CharField(u'ZIP / Postal code', max_length=36, blank=True)
+
+    location_type = models.ForeignKey(LocationType, related_name='locations')
+    neighborhood = models.CharField(max_length=250, blank=True)
+    description_txt = models.TextField(u'Description', blank=True,
+        help_text=u'A short description of the location.<br />\
+        <a href="http://daringfireball.net/projects/markdown/dingus">\
+        Markdown</a> syntax allowed.')
+    description_xml = models.TextField(editable=False, blank=True)
+
+    latitude = models.FloatField(blank=True, null=True, help_text=u'<a \
+        href="http://getlatlon.net/" title="Brillant tool by Simon Willison">\
+        GetLatLon.net</a> will help.')
+    longitude = models.FloatField(blank=True, null=True, help_text=u'<a \
+        href="http://getlatlon.net/" title="Brillant tool by Simon Willison">\
+        GetLatLon.net</a> will help.')
+
+    class Meta:
+        ordering = ['country', 'state', 'name']
+
+    def __unicode__(self):
+        return self.name
+
+    def save(self):
+        self.description_xml = formatter(self.description_txt)
+        super(Location, self).save()
