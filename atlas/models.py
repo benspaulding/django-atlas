@@ -9,7 +9,6 @@ import datetime
 
 from django.conf import settings
 from django.db import models
-from template_utils.markup import formatter
 
 
 class Country(models.Model):
@@ -106,7 +105,6 @@ class Location(models.Model):
         help_text=u'A short description of the location.<br />\
         <a href="http://daringfireball.net/projects/markdown/dingus">\
         Markdown</a> syntax allowed.')
-    description_xml = models.TextField(editable=False, blank=True)
 
     latitude = models.FloatField(blank=True, null=True, help_text=u'<a \
         href="http://getlatlon.net/" title="Brillant tool by Simon Willison">\
@@ -120,7 +118,3 @@ class Location(models.Model):
 
     def __unicode__(self):
         return self.name
-
-    def save(self):
-        self.description_xml = formatter(self.description_txt)
-        super(Location, self).save()
