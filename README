@@ -1,6 +1,6 @@
-==================================================
- Ghetto-style Geo App for Can’t-Hack-It Djangoers
-==================================================
+================================================
+ Janky/Lazy Geo App for Can’t-Hack-It Djangoers
+================================================
 
 I don’t want to bother with setting up everything involved with running
 Geo-Django, but I do want to track data about locations and tie locations to

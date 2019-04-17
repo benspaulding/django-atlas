@@ -8,7 +8,7 @@ def read(fname):
 setup(
     name='django-atlas',
     version='0.8.0',
-    description='Ghetto-style geo app for Django.',
+    description='Janky/lazy geo app for Django.',
     url='http://github.com/benspaulding/django-atlas/',
     author='Ben Spaulding',
     author_email='ben@benspaulding.com',
